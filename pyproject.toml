@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-server-puppeteer"
+version = "0.1.0"
+description = "Model Context Protocol server for browser automation using Playwright"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    { name = "Todd Wolven", email = "twolven@neotitanllc.com" },
+]
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=0.1.0",
+    "playwright>=1.40.0",
+    "playwright-stealth>=1.0.6",
+]
+
+[project.scripts]
+mcp-server-puppeteer = "puppeteer:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+include = ["puppeteer.py"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

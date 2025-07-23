@@ -1,5 +1,24 @@
 # Puppeteer MCP Server (Python Implementation)
 
+## 🔧 Fork Changelog
+
+This fork includes the following enhancements:
+
+### Migration to UV Package Manager
+- Replaced traditional pip/requirements.txt with modern UV package management
+- Added `pyproject.toml` for better dependency management
+- Faster and more reliable package installation with `uv.lock`
+
+### Stealth Mode Implementation
+- Added `playwright-stealth` integration for anti-bot detection
+- Configured advanced browser arguments including `--disable-blink-features=AutomationControlled`
+- Implemented persistent browser context with user data directory
+- Enhanced page load detection for better compatibility with dynamic websites
+
+⚠️ **WARNING: The stealth features in this fork are intended for personal testing and educational purposes only. Users are responsible for complying with all applicable laws and website terms of service.**
+
+---
+
 A Model Context Protocol server that provides browser automation capabilities using Playwright (Python's equivalent to Puppeteer). This server enables LLMs to interact with web pages, take screenshots, and execute JavaScript in a real browser environment.
 
 ## Overview
@@ -17,18 +36,23 @@ This Python implementation provides a stable alternative to the TypeScript versi
 * Comprehensive logging
 
 ## Prerequisites
-* Python 3.8+
-* pip (Python package installer)
+* Python 3.10+
+* uv (Fast Python package installer and resolver)
 
 ## Installation
-1. Install the required packages:
+1. Install uv if you haven't already:
 ```bash
-pip install -r requirements.txt
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-2. Install Playwright browsers:
+2. Install the required packages:
 ```bash
-playwright install
+uv sync
+```
+
+3. Install Playwright browsers:
+```bash
+uv run playwright install
 ```
 
 ## Usage
@@ -36,7 +60,7 @@ playwright install
 ### Starting the Server
 Run the server directly:
 ```bash
-python puppeteer_server.py
+uv run python puppeteer.py
 ```
 
 ### Claude Desktop Configuration
@@ -45,8 +69,8 @@ Add this to your Claude configuration file:
 {
   "mcpServers": {
     "puppeteer": {
-      "command": "python",
-      "args": ["path/to/puppeteer.py"]
+      "command": "uv",
+      "args": ["run", "python", "path/to/puppeteer.py"]
     }
   }
 }

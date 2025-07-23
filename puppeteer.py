@@ -3,7 +3,10 @@
 import logging
 import base64
 import asyncio
+import os
+from pathlib import Path
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
+from playwright_stealth import Stealth
 from mcp.server import Server
 from mcp.types import Tool, TextContent, ImageContent
 
@@ -27,13 +30,55 @@ class BrowserManager:
         if not self.browser:
             logger.info("Starting new browser instance...")
             self.playwright = await async_playwright().start()
-            self.browser = await self.playwright.chromium.launch(
+            
+            # Create user data directory
+            user_data_dir = Path.home() / ".mcp-puppeteer" / "user_data"
+            user_data_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Launch browser with persistent context
+            context = await self.playwright.chromium.launch_persistent_context(
+                user_data_dir=str(user_data_dir),
                 headless=False,
-                args=['--start-maximized']
+                args=[
+                    '--start-maximized',
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-infobars',
+                    '--window-position=0,0',
+                    '--ignore-certificate-errors',
+                    '--ignore-certificate-errors-spki-list',
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-dev-shm-usage',
+                    '--disable-features=IsolateOrigins,site-per-process',
+                    '--disable-web-security',
+                    '--disable-site-isolation-trials'
+                ],
+                viewport={"width": 1280, "height": 720},
+                locale='en-US',
+                timezone_id='America/New_York',
+                permissions=['geolocation', 'notifications'],
+                color_scheme='light',
+                accept_downloads=True
             )
-            self.page = await self.browser.new_page(
-                viewport={"width": 1280, "height": 720}
+            
+            self.browser = context
+            self.page = await context.new_page()
+            
+            # Apply stealth mode to avoid detection
+            stealth_config = Stealth(
+                navigator_languages=True,
+                navigator_permissions=True,
+                navigator_plugins=True,
+                navigator_webdriver=True,
+                navigator_user_agent=True,
+                navigator_vendor=True,
+                chrome_runtime=True,
+                webgl_vendor=True,
+                navigator_hardware_concurrency=True,
+                media_codecs=True
             )
+            await stealth_config.apply_stealth_async(self.page)
+            logger.info("Stealth mode applied to browser page")
             
             async def handle_console(msg):
                 log_entry = f"[{msg.type}] {msg.text}"
@@ -140,18 +185,32 @@ async def call_tool(name: str, arguments: dict):
             nav_timeout = arguments.get("timeout", DEFAULT_NAVIGATION_TIMEOUT)
             
             try:
-                await page.goto(url, timeout=nav_timeout)
-                # Check if page loaded successfully
-                if await browser_manager.check_page_loaded(page):
+                # Navigate with wait_until options for better compatibility
+                response = await page.goto(url, timeout=nav_timeout, wait_until="domcontentloaded")
+                
+                # Additional wait for network to be idle (helps with dynamic content)
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=5000)
+                except:
+                    # Network idle timeout is not critical
+                    pass
+                
+                # Check response status
+                if response and response.status >= 400:
                     return [TextContent(
                         type="text",
-                        text=f"Successfully navigated to {url}"
+                        text=f"Navigation completed but server returned error {response.status} for {url}"
                     )]
-                else:
-                    return [TextContent(
-                        type="text",
-                        text=f"Page load incomplete or failed for {url}. The page might be unavailable or loading too slowly."
-                    )]
+                
+                return [TextContent(
+                    type="text",
+                    text=f"Successfully navigated to {url}"
+                )]
+            except PlaywrightTimeout:
+                return [TextContent(
+                    type="text",
+                    text=f"Navigation timeout ({nav_timeout}ms) exceeded for {url}. The page might be loading too slowly."
+                )]
             except Exception as e:
                 return [TextContent(
                     type="text",
