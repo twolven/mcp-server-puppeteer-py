@@ -142,5 +142,9 @@ Comprehensive logging is implemented with different levels:
 ## Contributing
 Contributions are welcome! Please read the repository's contributing guidelines before submitting pull requests.
 
+## Author
+
+[Todd Wolven](https://toddwolven.com/) - Lead AI Software Developer and open-source GenAI engineer
+
 ## License
 This project is licensed under the Apache 2.0 License - see the LICENSE file for details.
